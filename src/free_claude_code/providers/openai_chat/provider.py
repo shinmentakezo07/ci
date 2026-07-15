@@ -29,6 +29,7 @@ from free_claude_code.core.anthropic.streaming import (
 from free_claude_code.core.failures import ExecutionFailure
 from free_claude_code.core.trace import provider_chat_body_snapshot, trace_event
 from free_claude_code.providers.base import BaseProvider, ProviderConfig
+from free_claude_code.providers.credentials import CredentialRing
 from free_claude_code.providers.failure_policy import classify_provider_failure
 from free_claude_code.providers.http import (
     close_provider_stream,
@@ -78,6 +79,7 @@ class OpenAIChatProvider(BaseProvider):
         self._profile = profile
         self._provider_name = profile.provider_name
         self._api_key = config.api_key
+        self._api_key_ring = CredentialRing(config.api_keys)
         self._base_url = profile.base_url(config.base_url).rstrip("/")
         # Learned per-model output-token caps from upstream 400 rejections, so
         # later requests clamp proactively instead of paying the 400 each time.
@@ -167,10 +169,31 @@ class OpenAIChatProvider(BaseProvider):
         """Return provider-specific Anthropic usage fields for final SSE usage."""
         return {}
 
+    def _auth_headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self._api_key_ring.next()}"}
+
+    def _rotate_auth_headers(self, attempted_keys: set[str]) -> dict[str, str] | None:
+        """Return headers with an untried key, or None if all keys are exhausted."""
+        for _ in range(len(self._api_key_ring)):
+            headers = self._auth_headers()
+            key = headers["Authorization"].removeprefix("Bearer ")
+            if key not in attempted_keys:
+                attempted_keys.add(key)
+                return headers
+        return None
+
+    def _is_key_failure(self, error: Exception) -> bool:
+        status_code = getattr(error, "status_code", None)
+        return status_code in (401, 403, 429)
+
     async def _create_stream(self, body: dict) -> tuple[Any, dict]:
         """Create a streaming chat completion with bounded request fallbacks."""
         body = self._apply_learned_output_cap(body)
         used_retry_kinds: set[str] = set()
+        auth_headers = self._auth_headers()
+        attempted_keys: set[str] = {
+            auth_headers["Authorization"].removeprefix("Bearer ")
+        }
 
         while True:
             try:
@@ -180,9 +203,20 @@ class OpenAIChatProvider(BaseProvider):
                     provider_failure_override=self._provider_failure_override,
                     **create_body,
                     stream=True,
+                    extra_headers=auth_headers,
                 )
                 return stream, body
             except Exception as error:
+                if self._is_key_failure(error) and len(self._api_key_ring) > 1:
+                    rotated = self._rotate_auth_headers(attempted_keys)
+                    if rotated is not None:
+                        auth_headers = rotated
+                        logger.warning(
+                            "{}_STREAM: retrying with next API key after {}",
+                            self._provider_name,
+                            type(error).__name__,
+                        )
+                        continue
                 retry_body = self._next_create_retry_body(error, body, used_retry_kinds)
                 if retry_body is None:
                     raise

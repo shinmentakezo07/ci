@@ -18,7 +18,7 @@ def make_request(**overrides):
 @pytest.fixture
 def sambanova_config():
     return ProviderConfig(
-        api_key="test_sambanova_key",
+        api_keys=("test_sambanova_key",),
         base_url=SAMBANOVA_DEFAULT_BASE,
         rate_limit=10,
         rate_window=60,

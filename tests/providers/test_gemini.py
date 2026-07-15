@@ -29,7 +29,7 @@ def _simulate_openai_sdk_wire_json(body: dict) -> dict:
 @pytest.fixture
 def gemini_config():
     return ProviderConfig(
-        api_key="test_gemini_key",
+        api_keys=("test_gemini_key",),
         base_url=GEMINI_DEFAULT_BASE,
         rate_limit=10,
         rate_window=60,
@@ -106,7 +106,7 @@ def test_build_request_body_global_disable_sets_reasoning_none():
     """When thinking is off, Gemini uses reasoning_effort none (Gemini 2.5 convention)."""
     provider = GeminiProvider(
         ProviderConfig(
-            api_key="test_gemini_key",
+            api_keys=("test_gemini_key",),
             base_url=GEMINI_DEFAULT_BASE,
             rate_limit=10,
             rate_window=60,

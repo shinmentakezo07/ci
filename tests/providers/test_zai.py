@@ -18,7 +18,7 @@ def zai_provider():
     return profiled_provider(
         "zai",
         ProviderConfig(
-            api_key="test_zai_key",
+            api_keys=("test_zai_key",),
             base_url=ZAI_DEFAULT_BASE,
             rate_limit=10,
             rate_window=60,

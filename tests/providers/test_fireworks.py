@@ -18,7 +18,7 @@ def fireworks_provider():
     return profiled_provider(
         "fireworks",
         ProviderConfig(
-            api_key="test_fireworks_key",
+            api_keys=("test_fireworks_key",),
             base_url=FIREWORKS_DEFAULT_BASE,
             rate_limit=10,
             rate_window=60,
@@ -71,7 +71,7 @@ def test_build_request_body_global_disable_blocks_thinking():
     provider = profiled_provider(
         "fireworks",
         ProviderConfig(
-            api_key="k",
+            api_keys=("k",),
             base_url=FIREWORKS_DEFAULT_BASE,
             rate_limit=1,
             rate_window=1,

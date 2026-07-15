@@ -24,7 +24,7 @@ from tests.providers.support import passthrough_rate_limiter
 @pytest.fixture
 def deepseek_config():
     return ProviderConfig(
-        api_key="test_deepseek_key",
+        api_keys=("test_deepseek_key",),
         base_url=DEEPSEEK_DEFAULT_BASE,
         rate_limit=10,
         rate_window=60,
@@ -157,7 +157,7 @@ def test_build_request_body_forced_tool_choice_downgrades_to_auto(
 def test_build_request_body_respects_global_thinking_disable():
     provider = DeepSeekProvider(
         ProviderConfig(
-            api_key="k",
+            api_keys=("k",),
             base_url=DEEPSEEK_DEFAULT_BASE,
             rate_limit=1,
             rate_window=1,
@@ -457,7 +457,7 @@ def test_tool_history_with_empty_top_level_reasoning_preserves_reasoning_state(
 def test_thinking_off_strips_thinking_history():
     provider = DeepSeekProvider(
         ProviderConfig(
-            api_key="k",
+            api_keys=("k",),
             base_url=DEEPSEEK_DEFAULT_BASE,
             rate_limit=1,
             rate_window=1,
@@ -540,7 +540,7 @@ def test_preflight_strips_user_image():
     )
     provider = DeepSeekProvider(
         ProviderConfig(
-            api_key="k",
+            api_keys=("k",),
             base_url=DEEPSEEK_DEFAULT_BASE,
             rate_limit=1,
             rate_window=1,
@@ -563,7 +563,7 @@ def test_preflight_rejects_mcp_servers():
     )
     provider = DeepSeekProvider(
         ProviderConfig(
-            api_key="k",
+            api_keys=("k",),
             base_url=DEEPSEEK_DEFAULT_BASE,
             rate_limit=1,
             rate_window=1,
@@ -582,7 +582,7 @@ def test_preflight_rejects_listed_server_tools_in_tools_list():
     )
     provider = DeepSeekProvider(
         ProviderConfig(
-            api_key="k",
+            api_keys=("k",),
             base_url=DEEPSEEK_DEFAULT_BASE,
             rate_limit=1,
             rate_window=1,
@@ -619,7 +619,7 @@ def test_preflight_rejects_server_tool_result_blocks():
     )
     provider = DeepSeekProvider(
         ProviderConfig(
-            api_key="k",
+            api_keys=("k",),
             base_url=DEEPSEEK_DEFAULT_BASE,
             rate_limit=1,
             rate_window=1,

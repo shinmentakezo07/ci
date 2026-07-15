@@ -17,7 +17,7 @@ def make_request(**overrides):
 @pytest.fixture
 def codestral_config():
     return ProviderConfig(
-        api_key="test_codestral_key",
+        api_keys=("test_codestral_key",),
         base_url=CODESTRAL_DEFAULT_BASE,
         rate_limit=10,
         rate_window=60,
@@ -65,7 +65,7 @@ def test_build_request_body_global_disable_blocks_reasoning_mapping():
     provider = profiled_provider(
         "mistral_codestral",
         ProviderConfig(
-            api_key="test_codestral_key",
+            api_keys=("test_codestral_key",),
             base_url=CODESTRAL_DEFAULT_BASE,
             rate_limit=10,
             rate_window=60,

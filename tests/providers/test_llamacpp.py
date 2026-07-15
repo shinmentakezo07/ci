@@ -18,7 +18,7 @@ LLAMACPP_MODEL = "llamacpp-community/qwen2.5-7b-instruct"
 def provider() -> OpenAIChatProvider:
     return profiled_provider(
         "llamacpp",
-        ProviderConfig(api_key="llamacpp", base_url="http://localhost:8080/v1"),
+        ProviderConfig(api_keys=("llamacpp",), base_url="http://localhost:8080/v1"),
         rate_limiter=passthrough_rate_limiter(),
     )
 
@@ -38,7 +38,7 @@ def test_init_normalizes_openai_base_url(configured: str, expected: str) -> None
     ) as openai_client:
         provider = profiled_provider(
             "llamacpp",
-            ProviderConfig(api_key="llamacpp", base_url=configured),
+            ProviderConfig(api_keys=("llamacpp",), base_url=configured),
             rate_limiter=passthrough_rate_limiter(),
         )
 
@@ -48,7 +48,7 @@ def test_init_normalizes_openai_base_url(configured: str, expected: str) -> None
 
 def test_init_uses_openai_chat_client() -> None:
     config = ProviderConfig(
-        api_key="llamacpp",
+        api_keys=("llamacpp",),
         base_url="http://localhost:8080/v1/",
         http_read_timeout=600.0,
         http_write_timeout=15.0,

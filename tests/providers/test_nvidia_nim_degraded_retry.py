@@ -28,7 +28,7 @@ _DEGRADED_DETAIL = f"Function id '{_FUNCTION_ID}': DEGRADED function cannot be i
 
 def _config(base_url: str) -> ProviderConfig:
     return ProviderConfig(
-        api_key="test_key",
+        api_keys=("test_key",),
         base_url=base_url,
         rate_limit=1_000_000,
         rate_window=1,

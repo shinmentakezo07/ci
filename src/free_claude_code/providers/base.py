@@ -25,7 +25,7 @@ class ProviderConfig:
     (e.g. NIM temperature, top_p) are passed by the provider constructor.
     """
 
-    api_key: str
+    api_keys: tuple[str, ...]
     base_url: str
     rate_limit: int | None = None
     rate_window: int = 60
@@ -37,6 +37,11 @@ class ProviderConfig:
     proxy: str = ""
     log_raw_sse_events: bool = False
     log_api_error_tracebacks: bool = False
+
+    @property
+    def api_key(self) -> str:
+        """Backward-compatible accessor returning the primary (first) API key."""
+        return self.api_keys[0] if self.api_keys else ""
 
 
 class BaseProvider(ABC):

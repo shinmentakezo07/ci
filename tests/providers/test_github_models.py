@@ -21,7 +21,7 @@ from tests.providers.support import passthrough_rate_limiter
 @pytest.fixture
 def github_models_config() -> ProviderConfig:
     return ProviderConfig(
-        api_key="test-github-models-token",
+        api_keys=("test-github-models-token",),
         base_url=GITHUB_MODELS_DEFAULT_BASE,
         rate_limit=10,
         rate_window=60,

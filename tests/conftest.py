@@ -34,7 +34,7 @@ def provider_config():
     from free_claude_code.providers.base import ProviderConfig
 
     return ProviderConfig(
-        api_key="test_key",
+        api_keys=("test_key",),
         base_url="https://test.api.nvidia.com/v1",
         rate_limit=10,
         rate_window=60,
@@ -66,7 +66,7 @@ def lmstudio_provider(provider_config):
     from free_claude_code.providers.lmstudio import LMStudioProvider
 
     lmstudio_config = ProviderConfig(
-        api_key="lm-studio",
+        api_keys=("lm-studio",),
         base_url="http://localhost:1234/v1",
         rate_limit=provider_config.rate_limit,
         rate_window=provider_config.rate_window,
@@ -80,7 +80,7 @@ def llamacpp_provider(provider_config):
     from free_claude_code.providers.openai_chat import create_openai_chat_provider
 
     llamacpp_config = ProviderConfig(
-        api_key="llamacpp",
+        api_keys=("llamacpp",),
         base_url="http://localhost:8080/v1",
         rate_limit=10,
         rate_window=60,

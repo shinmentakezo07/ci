@@ -7,12 +7,18 @@ from pathlib import Path
 from typing import Any
 
 from free_claude_code.config.paths import managed_env_path
+from free_claude_code.config.provider_catalog import PROVIDER_CATALOG
 from free_claude_code.config.settings import Settings
 
 from .manifest import FIELD_BY_KEY, FIELDS, SECTIONS, ConfigFieldSpec
 from .sources import dotenv_values_from_file, is_locked_source, template_values
 from .validation import settings_from_values
-from .values import MASKED_SECRET, load_value_state, normalize_for_env
+from .values import (
+    MASKED_SECRET,
+    is_numbered_credential,
+    load_value_state,
+    normalize_for_env,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,7 +72,11 @@ def target_values_with_updates(updates: Mapping[str, Any]) -> dict[str, str]:
     managed_values = dotenv_values_from_file(managed_env_path())
     if managed_values:
         values.update(
-            {key: val for key, val in managed_values.items() if key in values}
+            {
+                key: val
+                for key, val in managed_values.items()
+                if key in values or is_numbered_credential(key)
+            }
         )
     else:
         for key, entry in state.items():
@@ -193,6 +203,88 @@ def quote_env_value(value: str) -> str:
     return value
 
 
+def _managed_env_values() -> dict[str, str]:
+    return dotenv_values_from_file(managed_env_path())
+
+
+def _write_managed_env_values(values: dict[str, str]) -> None:
+    """Atomically persist the managed env file while preserving its header."""
+    path = managed_env_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_suffix(path.suffix + ".tmp")
+    try:
+        temp_path.write_text(
+            render_env_file(values),
+            encoding="utf-8",
+        )
+        os.replace(temp_path, path)
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+
+def _provider_credential_indices(base_env: str, values: dict[str, str]) -> list[int]:
+    """Return occupied credential indices (0 is the base env var)."""
+    indices: list[int] = []
+    if values.get(base_env, "").strip():
+        indices.append(0)
+    index = 1
+    while True:
+        value = values.get(f"{base_env}_{index}", "").strip()
+        next_value = values.get(f"{base_env}_{index + 1}", "").strip()
+        if value:
+            indices.append(index)
+        if not value and not next_value:
+            break
+        index += 1
+    return indices
+
+
+def list_provider_credentials(provider_id: str, base_env: str) -> list[dict[str, Any]]:
+    """Return masked credential list for a provider."""
+    values = _managed_env_values()
+    indices = _provider_credential_indices(base_env, values)
+    result: list[dict[str, Any]] = []
+    for index in indices:
+        if index == 0:
+            value = values.get(base_env, "").strip()
+            label = ""
+        else:
+            value = values.get(f"{base_env}_{index}", "").strip()
+            label = values.get(f"{base_env}_{index}_LABEL", "").strip()
+        if value:
+            result.append({"index": index, "value": MASKED_SECRET, "label": label})
+    return result
+
+
+def add_provider_credential(
+    provider_id: str, base_env: str, value: str, label: str
+) -> dict[str, Any]:
+    """Add a new credential to the next free numbered slot."""
+    values = _managed_env_values()
+    index = 1
+    while values.get(f"{base_env}_{index}", "").strip():
+        index += 1
+    values[f"{base_env}_{index}"] = value.strip()
+    if label.strip():
+        values[f"{base_env}_{index}_LABEL"] = label.strip()
+    _write_managed_env_values(values)
+    return {"provider_id": provider_id, "index": index}
+
+
+def remove_provider_credential(
+    provider_id: str, base_env: str, index: int
+) -> dict[str, Any]:
+    """Remove a credential at the given index."""
+    values = _managed_env_values()
+    if index == 0:
+        values.pop(base_env, None)
+    else:
+        values.pop(f"{base_env}_{index}", None)
+        values.pop(f"{base_env}_{index}_LABEL", None)
+    _write_managed_env_values(values)
+    return {"provider_id": provider_id, "index": index}
+
+
 def render_env_file(values: Mapping[str, str], *, mask_secrets: bool = False) -> str:
     """Render a complete grouped env file."""
 
@@ -207,6 +299,9 @@ def render_env_file(values: Mapping[str, str], *, mask_secrets: bool = False) ->
     for field in FIELDS:
         fields_by_section.setdefault(field.section_id, []).append(field)
 
+    credential_bases = {
+        descriptor.credential_env for descriptor in PROVIDER_CATALOG.values()
+    }
     for section in SECTIONS:
         lines.append(f"# {section.label}")
         for field in fields_by_section.get(section.section_id, []):
@@ -214,5 +309,29 @@ def render_env_file(values: Mapping[str, str], *, mask_secrets: bool = False) ->
             if mask_secrets and field.secret and value:
                 value = MASKED_SECRET
             lines.append(f"{field.key}={quote_env_value(value)}")
+            if field.key in credential_bases:
+                _append_numbered_credentials(lines, field.key, values, mask_secrets)
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _append_numbered_credentials(
+    lines: list[str], base_key: str, values: Mapping[str, str], mask_secrets: bool
+) -> None:
+    """Append numbered credential keys directly underneath their base field."""
+    index = 1
+    while True:
+        c_key = f"{base_key}_{index}"
+        l_key = f"{c_key}_LABEL"
+        c_value = values.get(c_key, "").strip()
+        l_value = values.get(l_key, "").strip()
+        next_key = f"{base_key}_{index + 1}"
+        next_value = values.get(next_key, "").strip()
+        if not c_value and not l_value and not next_value:
+            break
+        if c_value:
+            display = MASKED_SECRET if mask_secrets else c_value
+            lines.append(f"{c_key}={quote_env_value(display)}")
+        if l_value:
+            lines.append(f"{l_key}={quote_env_value(l_value)}")
+        index += 1

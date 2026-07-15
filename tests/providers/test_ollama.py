@@ -24,7 +24,7 @@ OLLAMA_CLOUD_MODEL = "qwen3-coder:480b"
 def _provider(base_url: str = OLLAMA_DEFAULT_BASE) -> OpenAIChatProvider:
     return profiled_provider(
         "ollama",
-        ProviderConfig(api_key="ollama", base_url=base_url),
+        ProviderConfig(api_keys=("ollama",), base_url=base_url),
         rate_limiter=passthrough_rate_limiter(),
     )
 
@@ -33,7 +33,7 @@ def _cloud_provider() -> OpenAIChatProvider:
     return profiled_provider(
         "ollama_cloud",
         ProviderConfig(
-            api_key="ollama-cloud-key",
+            api_keys=("ollama-cloud-key",),
             base_url=OLLAMA_CLOUD_DEFAULT_BASE,
         ),
         rate_limiter=passthrough_rate_limiter(),

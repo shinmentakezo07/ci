@@ -33,6 +33,13 @@ class AdminConfigPayload(BaseModel):
     values: dict[str, Any] = Field(default_factory=dict)
 
 
+class AddKeyPayload(BaseModel):
+    """New provider key submitted by the admin UI."""
+
+    value: str
+    label: str = ""
+
+
 def _is_loopback_host(host: str | None) -> bool:
     if host is None:
         return False
@@ -150,6 +157,40 @@ async def refresh_models(
 ):
     require_loopback_admin(request)
     return await services.admin.refresh_models()
+
+
+@router.get("/admin/api/providers/{provider_id}/keys")
+async def list_provider_keys(
+    provider_id: str,
+    request: Request,
+    services: ApiServices = Depends(get_services),
+):
+    require_loopback_admin(request)
+    return await services.admin.list_provider_keys(provider_id)
+
+
+@router.post("/admin/api/providers/{provider_id}/keys")
+async def add_provider_key(
+    provider_id: str,
+    payload: AddKeyPayload,
+    request: Request,
+    services: ApiServices = Depends(get_services),
+):
+    require_loopback_admin(request)
+    return await services.admin.add_provider_key(
+        provider_id, payload.value, payload.label
+    )
+
+
+@router.delete("/admin/api/providers/{provider_id}/keys/{index}")
+async def remove_provider_key(
+    provider_id: str,
+    index: int,
+    request: Request,
+    services: ApiServices = Depends(get_services),
+):
+    require_loopback_admin(request)
+    return await services.admin.remove_provider_key(provider_id, index)
 
 
 def _filtered_values(values: dict[str, Any]) -> dict[str, Any]:

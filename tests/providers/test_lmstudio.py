@@ -20,7 +20,7 @@ def make_request(**overrides):
 @pytest.fixture
 def lmstudio_config():
     return ProviderConfig(
-        api_key="lm-studio",
+        api_keys=("lm-studio",),
         base_url=LMSTUDIO_DEFAULT_BASE,
         rate_limit=10,
         rate_window=60,

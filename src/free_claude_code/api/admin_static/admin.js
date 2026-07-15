@@ -168,7 +168,122 @@ function renderProviders(providerStatus) {
     button.addEventListener("click", () => testProvider(provider.provider_id, button));
 
     card.append(title, meta, button);
+
+    const keyPanel = renderProviderKeyPanel(provider);
+    card.appendChild(keyPanel);
+
     grid.appendChild(card);
+  });
+}
+
+function renderProviderKeyPanel(provider) {
+  const panel = document.createElement("div");
+  panel.className = "key-panel";
+  panel.innerHTML = `
+    <div class="key-list"></div>
+    <button type="button" class="secondary-button add-key-button">Add key</button>
+    <form class="add-key-form" hidden>
+      <input type="password" class="key-value-input" placeholder="API key" autocomplete="off" />
+      <input type="text" class="key-label-input" placeholder="Label (optional)" />
+      <button type="submit" class="primary-button">Save</button>
+      <button type="button" class="ghost-button cancel-add-key">Cancel</button>
+    </form>
+  `;
+
+  const listEl = panel.querySelector(".key-list");
+  const addButton = panel.querySelector(".add-key-button");
+  const form = panel.querySelector(".add-key-form");
+  const valueInput = panel.querySelector(".key-value-input");
+  const labelInput = panel.querySelector(".key-label-input");
+  const cancelButton = panel.querySelector(".cancel-add-key");
+
+  addButton.addEventListener("click", () => {
+    form.hidden = false;
+    addButton.hidden = true;
+    valueInput.focus();
+  });
+
+  cancelButton.addEventListener("click", () => {
+    form.hidden = true;
+    addButton.hidden = false;
+    form.reset();
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const value = valueInput.value.trim();
+    const label = labelInput.value.trim();
+    if (!value) return;
+    try {
+      await addProviderKey(provider.provider_id, value, label);
+      form.reset();
+      form.hidden = true;
+      addButton.hidden = false;
+      await loadProviderKeysInto(provider.provider_id, listEl);
+      showMessage("Key added. Restart to apply.", "ok");
+    } catch (error) {
+      showMessage(error.message, "error");
+    }
+  });
+
+  loadProviderKeysInto(provider.provider_id, listEl).catch((error) => {
+    showMessage(error.message, "error");
+  });
+
+  return panel;
+}
+
+async function loadProviderKeysInto(providerId, container) {
+  const result = await loadProviderKeys(providerId);
+  renderKeyList(providerId, result.keys || [], container);
+}
+
+async function loadProviderKeys(providerId) {
+  return api(`/admin/api/providers/${providerId}/keys`);
+}
+
+async function addProviderKey(providerId, value, label) {
+  return api(`/admin/api/providers/${providerId}/keys`, {
+    method: "POST",
+    body: JSON.stringify({ value, label }),
+  });
+}
+
+async function removeProviderKey(providerId, index) {
+  return api(`/admin/api/providers/${providerId}/keys/${index}`, {
+    method: "DELETE",
+    body: "{}",
+  });
+}
+
+function renderKeyList(providerId, keys, container) {
+  container.innerHTML = "";
+  if (!keys.length) {
+    const empty = document.createElement("div");
+    empty.className = "key-empty";
+    empty.textContent = "No additional keys";
+    container.appendChild(empty);
+    return;
+  }
+  keys.forEach((key) => {
+    const row = document.createElement("div");
+    row.className = "key-row";
+    const label = key.label ? `${key.label} · ` : "";
+    row.innerHTML = `
+      <span class="key-value">${label}${key.value}</span>
+      <button type="button" class="ghost-button delete-key" data-index="${key.index}">Delete</button>
+    `;
+    row.querySelector(".delete-key").addEventListener("click", async (event) => {
+      const index = Number(event.target.dataset.index);
+      try {
+        await removeProviderKey(providerId, index);
+        await loadProviderKeysInto(providerId, container);
+        showMessage("Key removed. Restart to apply.", "ok");
+      } catch (error) {
+        showMessage(error.message, "error");
+      }
+    });
+    container.appendChild(row);
   });
 }
 

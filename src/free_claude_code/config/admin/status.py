@@ -8,6 +8,24 @@ from free_claude_code.config.provider_catalog import PROVIDER_CATALOG
 from .manifest import FIELDS
 
 
+def _provider_has_credential(
+    state: Mapping[str, Mapping[str, Any]], base_env: str
+) -> bool:
+    """Return True when any credential slot for a provider is non-empty."""
+    value = str(state.get(base_env, {}).get("value", ""))
+    if value.strip():
+        return True
+    index = 1
+    while True:
+        numbered = str(state.get(f"{base_env}_{index}", {}).get("value", ""))
+        next_numbered = str(state.get(f"{base_env}_{index + 1}", {}).get("value", ""))
+        if numbered.strip():
+            return True
+        if not next_numbered.strip():
+            return False
+        index += 1
+
+
 def provider_config_status(
     state: Mapping[str, Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
@@ -30,8 +48,7 @@ def provider_config_status(
             )
             continue
 
-        value = str(state.get(descriptor.credential_env, {}).get("value", ""))
-        configured = bool(value.strip())
+        configured = _provider_has_credential(state, descriptor.credential_env or "")
         statuses.append(
             {
                 "provider_id": provider_id,

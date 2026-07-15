@@ -35,7 +35,7 @@ def _connection_error(message: str = "connect failed") -> openai.APIConnectionEr
 @pytest.mark.asyncio
 async def test_nim_stream_retries_on_openai_5xx_then_streams(status_code):
     config = ProviderConfig(
-        api_key="test_key",
+        api_keys=("test_key",),
         base_url="https://test.api.nvidia.com/v1",
         rate_limit=100,
         rate_window=60,
@@ -79,7 +79,7 @@ async def test_nim_stream_retries_on_openai_5xx_then_streams(status_code):
 @pytest.mark.asyncio
 async def test_nim_stream_retries_on_pre_stream_connection_error_then_streams():
     config = ProviderConfig(
-        api_key="test_key",
+        api_keys=("test_key",),
         base_url="https://test.api.nvidia.com/v1",
         rate_limit=100,
         rate_window=60,
@@ -123,7 +123,7 @@ async def test_nim_stream_retries_on_pre_stream_connection_error_then_streams():
 @pytest.mark.asyncio
 async def test_nim_stream_connection_error_exhausted_emits_cause_chain():
     config = ProviderConfig(
-        api_key="test_key",
+        api_keys=("test_key",),
         base_url="https://test.api.nvidia.com/v1",
         rate_limit=100,
         rate_window=60,
@@ -178,7 +178,7 @@ async def test_nim_stream_openai_5xx_exhausted_emits_user_message(
     expect_substr,
 ):
     config = ProviderConfig(
-        api_key="test_key",
+        api_keys=("test_key",),
         base_url="https://test.api.nvidia.com/v1",
         rate_limit=100,
         rate_window=60,

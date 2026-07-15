@@ -42,7 +42,7 @@ class ProviderWithoutPreflight(BaseProvider):
 def test_provider_base_requires_an_explicit_preflight_implementation() -> None:
     with pytest.raises(TypeError, match="preflight_stream"):
         ProviderWithoutPreflight(
-            ProviderConfig(api_key="test", base_url="https://test.invalid")
+            ProviderConfig(api_keys=("test",), base_url="https://test.invalid")
         )
 
 

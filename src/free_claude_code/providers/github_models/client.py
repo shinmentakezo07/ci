@@ -8,6 +8,7 @@ import httpx
 from free_claude_code.application.model_metadata import ProviderModelInfo
 from free_claude_code.core.anthropic.models import MessagesRequest
 from free_claude_code.providers.base import ProviderConfig
+from free_claude_code.providers.credentials import CredentialRing
 from free_claude_code.providers.http import maybe_await_aclose
 from free_claude_code.providers.model_listing import (
     ModelListResponseError,
@@ -35,6 +36,7 @@ class GitHubModelsProvider(OpenAIChatProvider):
     """GitHub Models OpenAI-compatible inference provider."""
 
     def __init__(self, config: ProviderConfig, *, rate_limiter: ProviderRateLimiter):
+        self._api_key_ring = CredentialRing(config.api_keys)
         self._catalog_url = GITHUB_MODELS_CATALOG_URL
         self._model_list_client = httpx.AsyncClient(
             proxy=config.proxy or None,
@@ -91,7 +93,7 @@ class GitHubModelsProvider(OpenAIChatProvider):
         )
 
     def _model_list_headers(self) -> dict[str, str]:
-        return _github_models_api_headers(self._api_key)
+        return _github_models_api_headers(self._api_key_ring.next())
 
 
 def _github_models_default_headers() -> dict[str, str]:

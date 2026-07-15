@@ -66,7 +66,7 @@ class ClosableAsyncStreamMock(AsyncStreamMock):
 def _make_provider():
     """Create a provider instance for testing."""
     config = ProviderConfig(
-        api_key="test_key",
+        api_keys=("test_key",),
         base_url="https://test.api.nvidia.com/v1",
         rate_limit=10,
         rate_window=60,
@@ -87,7 +87,7 @@ def _make_tool_assembler(provider: NvidiaNimProvider) -> OpenAIToolCallAssembler
 def _make_provider_with_thinking_enabled(enabled: bool):
     """Create a provider instance with thinking explicitly enabled or disabled."""
     config = ProviderConfig(
-        api_key="test_key",
+        api_keys=("test_key",),
         base_url="https://test.api.nvidia.com/v1",
         rate_limit=10,
         rate_window=60,

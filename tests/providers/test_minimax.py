@@ -39,7 +39,7 @@ def minimax_provider():
     return profiled_provider(
         "minimax",
         ProviderConfig(
-            api_key="test-minimax-key",
+            api_keys=("test-minimax-key",),
             base_url=MINIMAX_DEFAULT_BASE,
             rate_limit=10,
             rate_window=60,

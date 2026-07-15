@@ -26,7 +26,7 @@ _MODEL_SEARCH_URL = f"{CLOUDFLARE_AI_REST_ROOT}/accounts/{_ACCOUNT_ID}/ai/models
 @pytest.fixture
 def cloudflare_config() -> ProviderConfig:
     return ProviderConfig(
-        api_key="test-cloudflare-token",
+        api_keys=("test-cloudflare-token",),
         base_url=CLOUDFLARE_AI_REST_ROOT,
         rate_limit=10,
         rate_window=60,

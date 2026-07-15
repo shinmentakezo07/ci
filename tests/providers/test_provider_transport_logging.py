@@ -19,7 +19,7 @@ from tests.providers.support import passthrough_rate_limiter
 def _provider(*, verbose: bool = False) -> NvidiaNimProvider:
     return NvidiaNimProvider(
         ProviderConfig(
-            api_key="k",
+            api_keys=("k",),
             base_url="http://localhost:1/v1",
             log_api_error_tracebacks=verbose,
         ),

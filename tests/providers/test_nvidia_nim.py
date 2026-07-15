@@ -121,7 +121,7 @@ async def test_init_uses_configurable_timeouts():
     from free_claude_code.providers.base import ProviderConfig
 
     config = ProviderConfig(
-        api_key="test_key",
+        api_keys=("test_key",),
         base_url="https://test.api.nvidia.com/v1",
         http_read_timeout=600.0,
         http_write_timeout=15.0,

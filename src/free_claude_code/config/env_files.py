@@ -31,8 +31,8 @@ def settings_env_files(env: Mapping[str, str] | None = None) -> tuple[Path, ...]
     """Return Settings dotenv files in low-to-high precedence order."""
 
     files: list[Path] = [
-        repo_env_path(),
         managed_env_path(),
+        repo_env_path(),
     ]
     if explicit := explicit_env_path(env):
         files.append(explicit)

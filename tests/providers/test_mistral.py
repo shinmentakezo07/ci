@@ -22,7 +22,7 @@ def make_request(**overrides):
 @pytest.fixture
 def mistral_config():
     return ProviderConfig(
-        api_key="test_mistral_key",
+        api_keys=("test_mistral_key",),
         base_url=MISTRAL_DEFAULT_BASE,
         rate_limit=10,
         rate_window=60,
@@ -139,7 +139,7 @@ def test_build_request_body_global_disable_blocks_reasoning_mapping():
     """Global disable disables reasoning replay in the converter."""
     provider = MistralProvider(
         ProviderConfig(
-            api_key="test_mistral_key",
+            api_keys=("test_mistral_key",),
             base_url=MISTRAL_DEFAULT_BASE,
             rate_limit=10,
             rate_window=60,
@@ -157,7 +157,7 @@ def test_build_request_body_global_disable_blocks_reasoning_mapping():
 def test_build_request_body_thinking_disabled_strips_prior_mistral_thinking():
     provider = MistralProvider(
         ProviderConfig(
-            api_key="test_mistral_key",
+            api_keys=("test_mistral_key",),
             base_url=MISTRAL_DEFAULT_BASE,
             rate_limit=10,
             rate_window=60,

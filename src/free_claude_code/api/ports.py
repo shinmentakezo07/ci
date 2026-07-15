@@ -22,6 +22,16 @@ class AdminRuntimePort(Protocol):
 
     async def request_restart(self) -> None: ...
 
+    async def list_provider_keys(self, provider_id: str) -> dict[str, Any]: ...
+
+    async def add_provider_key(
+        self, provider_id: str, value: str, label: str
+    ) -> dict[str, Any]: ...
+
+    async def remove_provider_key(
+        self, provider_id: str, index: int
+    ) -> dict[str, Any]: ...
+
 
 @dataclass(frozen=True, slots=True)
 class ApiServices:

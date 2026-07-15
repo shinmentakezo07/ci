@@ -1,6 +1,7 @@
 """Provider configuration construction from neutral catalog metadata."""
 
 from free_claude_code.application.errors import ApplicationUnavailableError
+from free_claude_code.config.credentials import ProviderCredential
 from free_claude_code.config.provider_catalog import ProviderDescriptor
 from free_claude_code.config.settings import Settings
 from free_claude_code.providers.base import ProviderConfig
@@ -52,8 +53,20 @@ def build_provider_config(
             f"Provider {descriptor.provider_id!r} has no configured base URL."
         )
     proxy = string_setting(settings, descriptor.proxy_attr)
+
+    if descriptor.credential_env:
+        api_keys = [ProviderCredential(credential)] if credential.strip() else []
+        api_keys.extend(
+            cred
+            for cred in settings.provider_credentials(descriptor.credential_env)
+            if cred.value != credential
+        )
+        api_keys = tuple(cred.value for cred in api_keys)
+    else:
+        api_keys = (credential,) if credential.strip() else ()
+
     return ProviderConfig(
-        api_key=credential,
+        api_keys=api_keys,
         base_url=resolved_base_url,
         rate_limit=settings.provider_rate_limit,
         rate_window=settings.provider_rate_window,

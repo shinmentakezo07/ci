@@ -36,7 +36,7 @@ class CountingWaferProvider(OpenAIChatProvider):
 @pytest.fixture
 def wafer_config():
     return ProviderConfig(
-        api_key="test-wafer-key",
+        api_keys=("test-wafer-key",),
         base_url=WAFER_DEFAULT_BASE,
         rate_limit=10,
         rate_window=60,

@@ -1,14 +1,19 @@
 """Flat application settings schema loaded by Pydantic Settings."""
 
+import os
 from functools import lru_cache
 from typing import Any
 
+from dotenv import dotenv_values
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from free_claude_code.config.credentials import ProviderCredential
 
 from .constants import HTTP_CONNECT_TIMEOUT_DEFAULT
 from .env_files import (
     ANTHROPIC_AUTH_TOKEN_ENV,
+    configured_env_files,
     env_file_override,
     settings_env_files,
 )
@@ -100,7 +105,7 @@ class Settings(BaseSettings):
     )
 
     # ==================== NVIDIA NIM Config ====================
-    nvidia_nim_api_key: str = ""
+    nvidia_nim_api_key: str = Field(default="", validation_alias="NVIDIA_NIM_API_KEY")
 
     # ==================== LM Studio Config ====================
     lm_studio_base_url: str = Field(
@@ -402,6 +407,45 @@ class Settings(BaseSettings):
         if dotenv_value is not None:
             self.anthropic_auth_token = dotenv_value
         return self
+
+    def provider_credentials(self, base_env: str) -> tuple[ProviderCredential, ...]:
+        """Return all non-empty credentials for a base env var name."""
+        # Build a composite env dict from configured dotenv files (later files
+        # override earlier ones) with process env on top.
+        env_vars: dict[str, str] = {}
+        for env_file in configured_env_files(self.model_config):
+            if env_file.is_file():
+                try:
+                    loaded = dotenv_values(env_file)
+                except OSError:
+                    continue
+                env_vars.update(
+                    {key: value for key, value in loaded.items() if value is not None}
+                )
+        env_vars.update(os.environ)
+
+        credentials: list[ProviderCredential] = []
+        base_value = env_vars.get(base_env, "")
+        if base_value.strip():
+            credentials.append(ProviderCredential(base_value))
+
+        index = 1
+        while True:
+            value = env_vars.get(f"{base_env}_{index}", "").strip()
+            if not value:
+                # Continue scanning in case of gaps, up to a reasonable bound.
+                # Stop when both the current and next slots are empty to avoid
+                # scanning forever in sparse config.
+                next_value = env_vars.get(f"{base_env}_{index + 1}", "").strip()
+                if not next_value:
+                    break
+                index += 1
+                continue
+            label = env_vars.get(f"{base_env}_{index}_LABEL", "").strip()
+            credentials.append(ProviderCredential(value, label))
+            index += 1
+
+        return tuple(credentials)
 
     model_config = SettingsConfigDict(
         env_file=settings_env_files(),

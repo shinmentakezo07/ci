@@ -18,7 +18,7 @@ def make_request(**overrides):
 @pytest.fixture
 def vercel_config():
     return ProviderConfig(
-        api_key="test_vercel_key",
+        api_keys=("test_vercel_key",),
         base_url=VERCEL_AI_GATEWAY_DEFAULT_BASE,
         rate_limit=10,
         rate_window=60,

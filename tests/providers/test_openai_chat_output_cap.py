@@ -115,7 +115,7 @@ def groq_provider():
     return profiled_provider(
         "groq",
         ProviderConfig(
-            api_key="test_groq_key",
+            api_keys=("test_groq_key",),
             base_url=GROQ_DEFAULT_BASE,
             rate_limit=10,
             rate_window=60,

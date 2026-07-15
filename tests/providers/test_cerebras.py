@@ -17,7 +17,7 @@ def make_request(**overrides):
 @pytest.fixture
 def cerebras_config():
     return ProviderConfig(
-        api_key="test_cerebras_key",
+        api_keys=("test_cerebras_key",),
         base_url=CEREBRAS_DEFAULT_BASE,
         rate_limit=10,
         rate_window=60,
@@ -63,7 +63,7 @@ def test_build_request_body_global_disable_blocks_reasoning_mapping():
     provider = profiled_provider(
         "cerebras",
         ProviderConfig(
-            api_key="test_cerebras_key",
+            api_keys=("test_cerebras_key",),
             base_url=CEREBRAS_DEFAULT_BASE,
             rate_limit=10,
             rate_window=60,

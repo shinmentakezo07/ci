@@ -4,6 +4,7 @@ import os
 from typing import Any
 
 from free_claude_code.config.paths import managed_env_path
+from free_claude_code.config.provider_catalog import PROVIDER_CATALOG
 
 from .manifest import FIELD_BY_KEY, FIELDS, SECTIONS, ConfigFieldSpec
 from .sources import (
@@ -38,20 +39,63 @@ def display_value(field: ConfigFieldSpec, value: str) -> str:
     return value
 
 
+def _scan_process_env_for_numbered_credentials(valid_keys: set[str]) -> None:
+    """Add numbered credential keys found only in process env to the valid key set."""
+    for provider in PROVIDER_CATALOG.values():
+        if not provider.credential_env:
+            continue
+        index = 1
+        while True:
+            key = f"{provider.credential_env}_{index}"
+            label_key = f"{key}_LABEL"
+            next_key = f"{provider.credential_env}_{index + 1}"
+            if (
+                key not in os.environ
+                and label_key not in os.environ
+                and next_key not in os.environ
+            ):
+                break
+            if key in os.environ:
+                valid_keys.add(key)
+            if label_key in os.environ:
+                valid_keys.add(label_key)
+            index += 1
+
+
+def is_numbered_credential(key: str) -> bool:
+    """Return True if key is a numbered credential var like OPENROUTER_API_KEY_1."""
+    for provider in PROVIDER_CATALOG.values():
+        if not provider.credential_env:
+            continue
+        prefix = f"{provider.credential_env}_"
+        if not key.startswith(prefix):
+            continue
+        suffix = key[len(prefix) :]
+        if suffix.isdigit():
+            return True
+        label_prefix = suffix.removesuffix("_LABEL")
+        if label_prefix != suffix and label_prefix.isdigit():
+            return True
+    return False
+
+
 def load_value_state() -> ValueState:
     """Load effective admin field values and their sources."""
 
     values = template_values()
     sources = {key: "template" if key in values else "default" for key in FIELD_BY_KEY}
+    valid_keys: set[str] = set(FIELD_BY_KEY)
 
     for source, path in configured_env_files():
         file_values = dotenv_values_from_file(path)
         for key, value in file_values.items():
-            if key in FIELD_BY_KEY:
+            if key in FIELD_BY_KEY or is_numbered_credential(key):
+                valid_keys.add(key)
                 values[key] = value
                 sources[key] = source
 
-    for key in FIELD_BY_KEY:
+    _scan_process_env_for_numbered_credentials(valid_keys)
+    for key in valid_keys:
         if key in os.environ:
             values[key] = os.environ[key]
             sources[key] = "process"
@@ -61,7 +105,7 @@ def load_value_state() -> ValueState:
             "value": values.get(key, ""),
             "source": sources.get(key, "default"),
         }
-        for key in FIELD_BY_KEY
+        for key in valid_keys
     }
 
 

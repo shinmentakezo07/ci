@@ -9,7 +9,7 @@ def test_build_request_body_preserves_empty_reasoning_content() -> None:
     provider = profiled_provider(
         "opencode",
         ProviderConfig(
-            api_key="test_opencode_key",
+            api_keys=("test_opencode_key",),
             base_url="https://example.invalid/v1",
             rate_limit=1,
             rate_window=1,

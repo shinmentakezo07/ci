@@ -30,7 +30,7 @@ class _UsageTestProvider(OpenAIChatProvider):
     def __init__(self):
         super().__init__(
             ProviderConfig(
-                api_key="test_key",
+                api_keys=("test_key",),
                 base_url="https://provider.example/v1",
                 rate_limit=100,
                 rate_window=60,

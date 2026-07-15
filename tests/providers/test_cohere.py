@@ -19,7 +19,7 @@ def make_request(**overrides):
 @pytest.fixture
 def cohere_config():
     return ProviderConfig(
-        api_key="test_cohere_key",
+        api_keys=("test_cohere_key",),
         base_url=COHERE_DEFAULT_BASE,
         rate_limit=10,
         rate_window=60,
@@ -139,7 +139,7 @@ def test_build_request_body_maps_thinking_disabled_to_reasoning_none():
     provider = profiled_provider(
         "cohere",
         ProviderConfig(
-            api_key="test_cohere_key",
+            api_keys=("test_cohere_key",),
             base_url=COHERE_DEFAULT_BASE,
             rate_limit=10,
             rate_window=60,

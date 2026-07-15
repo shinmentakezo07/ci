@@ -17,7 +17,7 @@ from tests.providers.support import passthrough_rate_limiter
 @pytest.mark.asyncio
 async def test_task_tool_interception():
     # Setup provider
-    config = ProviderConfig(api_key="test", base_url=NVIDIA_NIM_DEFAULT_BASE)
+    config = ProviderConfig(api_keys=("test",), base_url=NVIDIA_NIM_DEFAULT_BASE)
     provider = NvidiaNimProvider(
         config,
         nim_settings=NimSettings(),

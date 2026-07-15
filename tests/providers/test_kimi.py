@@ -19,7 +19,7 @@ def kimi_provider():
     return profiled_provider(
         "kimi",
         ProviderConfig(
-            api_key="test_kimi_key",
+            api_keys=("test_kimi_key",),
             base_url=KIMI_DEFAULT_BASE,
             rate_limit=10,
             rate_window=60,

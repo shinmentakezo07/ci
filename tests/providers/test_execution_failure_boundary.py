@@ -54,7 +54,7 @@ def _chunk(*, content: str | None = None, finish_reason: str | None = None) -> o
 def _provider() -> NvidiaNimProvider:
     return NvidiaNimProvider(
         ProviderConfig(
-            api_key="test_key",
+            api_keys=("test_key",),
             base_url="https://test.api.nvidia.com/v1",
             rate_limit=10,
             rate_window=60,

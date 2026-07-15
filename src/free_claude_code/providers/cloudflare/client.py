@@ -12,6 +12,7 @@ from free_claude_code.application.model_metadata import ProviderModelInfo
 from free_claude_code.config.provider_catalog import CLOUDFLARE_AI_REST_ROOT
 from free_claude_code.core.anthropic.models import MessagesRequest
 from free_claude_code.providers.base import ProviderConfig
+from free_claude_code.providers.credentials import CredentialRing
 from free_claude_code.providers.http import maybe_await_aclose
 from free_claude_code.providers.model_listing import (
     ModelListResponseError,
@@ -70,6 +71,7 @@ class CloudflareProvider(OpenAIChatProvider):
         rate_limiter: ProviderRateLimiter,
     ):
         base_url = cloudflare_ai_base_url(config.base_url, account_id)
+        self._api_key_ring = CredentialRing(config.api_keys)
         self._model_search_url = _cloudflare_model_search_url(
             config.base_url, account_id
         )
@@ -139,7 +141,7 @@ class CloudflareProvider(OpenAIChatProvider):
         yield ledger.emit_thinking_delta(reasoning)
 
     def _model_list_headers(self) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self._api_key}"}
+        return {"Authorization": f"Bearer {self._api_key_ring.next()}"}
 
 
 def _apply_cloudflare_request_quirks(

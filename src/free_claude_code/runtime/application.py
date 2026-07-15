@@ -17,8 +17,11 @@ from free_claude_code.application.errors import ApplicationUnavailableError
 from free_claude_code.application.ports import StopResult
 from free_claude_code.config.admin.persistence import (
     PreparedAdminUpdate,
+    add_provider_credential,
     commit_prepared_admin_update,
+    list_provider_credentials,
     prepare_admin_update,
+    remove_provider_credential,
 )
 from free_claude_code.config.admin.status import provider_config_status
 from free_claude_code.config.admin.values import load_value_state
@@ -260,6 +263,42 @@ class ApplicationRuntime:
         result = callback()
         if inspect.isawaitable(result):
             await result
+
+    def _descriptor_or_raise(self, provider_id: str):
+        from free_claude_code.application.errors import UnknownProviderError
+        from free_claude_code.config.provider_catalog import PROVIDER_CATALOG
+
+        descriptor = PROVIDER_CATALOG.get(provider_id)
+        if descriptor is None or descriptor.credential_env is None:
+            raise UnknownProviderError.for_provider(provider_id, PROVIDER_CATALOG)
+        return descriptor
+
+    async def list_provider_keys(self, provider_id: str) -> dict[str, Any]:
+        descriptor = self._descriptor_or_raise(provider_id)
+        return {
+            "provider_id": provider_id,
+            "keys": list_provider_credentials(provider_id, descriptor.credential_env),
+        }
+
+    async def add_provider_key(
+        self, provider_id: str, value: str, label: str
+    ) -> dict[str, Any]:
+        descriptor = self._descriptor_or_raise(provider_id)
+        if not value.strip():
+            raise ValueError("Key value is required")
+        result = add_provider_credential(
+            provider_id, descriptor.credential_env, value, label
+        )
+        get_settings.cache_clear()
+        return result
+
+    async def remove_provider_key(self, provider_id: str, index: int) -> dict[str, Any]:
+        descriptor = self._descriptor_or_raise(provider_id)
+        result = remove_provider_credential(
+            provider_id, descriptor.credential_env, index
+        )
+        get_settings.cache_clear()
+        return result
 
     async def stop_all(self) -> StopResult | None:
         if self._messaging_workflow is not None:

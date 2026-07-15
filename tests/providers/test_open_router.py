@@ -43,7 +43,7 @@ def make_request(**overrides):
 def open_router_provider():
     return OpenRouterProvider(
         ProviderConfig(
-            api_key="test_openrouter_key",
+            api_keys=("test_openrouter_key",),
             base_url="https://openrouter.ai/api/v1",
             rate_limit=10,
             rate_window=60,

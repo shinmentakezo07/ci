@@ -19,7 +19,7 @@ def make_request(**overrides):
 @pytest.fixture
 def huggingface_config():
     return ProviderConfig(
-        api_key="test_hf_key",
+        api_keys=("test_hf_key",),
         base_url=HUGGINGFACE_DEFAULT_BASE,
         rate_limit=10,
         rate_window=60,
