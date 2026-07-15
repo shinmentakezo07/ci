@@ -1,0 +1,100 @@
+# syntax=docker/dockerfile:1.7
+# Free Claude Code — voice transcription image.
+#
+# Production image + the `voice` (NVIDIA NIM Riva gRPC client) and `voice_local`
+# (local Whisper via torch / transformers / librosa) extras.
+#
+#   - `voice`        : small, CPU-only gRPC client to a remote Riva server.
+#   - `voice_local`  : torch cu130 (~2GB+ download). The cu130 wheel bundles its
+#                      own CUDA libs, so it runs on CPU hosts too; add
+#                      `--gpus all` / nvidia-container-toolkit for GPU.
+#
+# librosa/soundfile need the system `libsndfile1`.
+#
+# Build (NIM Riva client only — light):
+#   docker build -f Dockerfile.voice --build-arg EXTRAS=voice -t free-claude-code:voice .
+#
+# Build (local Whisper — heavy; CPU torch ok):
+#   docker build -f Dockerfile.voice --build-arg EXTRAS=voice,voice_local -t free-claude-code:voice-local .
+#
+# Run with GPU (voice_local):
+#   docker run --rm --gpus all -p 8082:8082 free-claude-code:voice-local
+#
+# NOTE: Not exercised in CI — the cu130 torch wheel is large. Verify locally.
+
+ARG UV_VERSION=0.11.0
+ARG PYTHON_VERSION=3.14
+ARG EXTRAS="voice,voice_local"
+
+# ---------------------------------------------------------------------------
+# Stage 0 — uv binary
+# ---------------------------------------------------------------------------
+FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv
+
+# ---------------------------------------------------------------------------
+# Stage 1 — builder
+# ---------------------------------------------------------------------------
+FROM python:${PYTHON_VERSION}-slim-bookworm AS builder
+COPY --from=uv /uv /uvx /usr/local/bin/
+
+ENV UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    UV_PYTHON_PREFERENCE=only-system \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_PROJECT_ENVIRONMENT=/app/.venv
+
+# librosa -> soundfile -> libsndfile1 at runtime; build-essential in case an
+# extra ships an sdist-only wheel that needs compiling on this new interpreter.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libsndfile1 build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+ARG EXTRAS
+SHELL ["/bin/bash", "-c"]
+
+COPY pyproject.toml uv.lock README.md .env.example ./
+
+RUN uv sync --frozen --no-dev --no-install-project \
+        $(IFS=','; for e in $EXTRAS; do echo "--extra $e"; done)
+
+COPY src/ ./src/
+RUN uv build --no-sources --wheel --out-dir /wheels
+RUN uv pip install --no-deps --python /app/.venv/bin/python /wheels/free_claude_code-*.whl
+
+# ---------------------------------------------------------------------------
+# Stage 2 — runtime
+# ---------------------------------------------------------------------------
+FROM python:${PYTHON_VERSION}-slim-bookworm AS runtime
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PATH=/app/.venv/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# librosa needs libsndfile1 to read/write audio.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libsndfile1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r app --gid 1000 \
+    && useradd -r -g app --uid 1000 -m -d /home/app app \
+    && mkdir -p /home/app/.fcc \
+    && chown -R app:app /home/app
+
+COPY --from=builder --chown=app:app /app/.venv /app/.venv
+
+ENV FCC_OPEN_BROWSER=false \
+    HOST=0.0.0.0 \
+    PORT=8082 \
+    HOME=/home/app
+
+WORKDIR /app
+USER app
+
+EXPOSE 8082
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=5 --start-period=10s \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:${PORT}/health', timeout=3).status==200 else 1)"
+
+CMD ["fcc-server"]

@@ -1,0 +1,48 @@
+# syntax=docker/dockerfile:1.7
+# Free Claude Code — development / CI image.
+#
+# Single uv-on-python-slim image with the `dev` dependency group so you can run
+# the whole local CI sequence (ruff format/check, ty, pytest, smoke) inside the
+# container exactly as ./scripts/ci.sh does on the host.
+#
+# Build:
+#   docker build -f Dockerfile.dev -t fcc-dev .
+#
+# Run (examples):
+#   docker run --rm fcc-dev uv run pytest -v --tb=short
+#   docker run --rm fcc-dev ./scripts/ci.sh --only pytest
+#   docker run --rm fcc-dev uv run ruff format --check
+#   docker run --rm fcc-dev uv run ty check src tests
+#   # interactive shell for iteration:
+#   docker run --rm -it --entrypoint bash fcc-dev
+
+ARG UV_VERSION=0.11.0
+ARG PYTHON_VERSION=3.14
+
+FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv
+FROM python:${PYTHON_VERSION}-slim-bookworm
+
+COPY --from=uv /uv /uvx /usr/local/bin/
+
+ENV UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    UV_PYTHON_PREFERENCE=only-system \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_PROJECT_ENVIRONMENT=/app/.venv \
+    PATH=/app/.venv/bin:/usr/local/bin:/usr/bin:/bin
+
+WORKDIR /app
+
+# Dev image ships the full handle: tests, smoke harness, and CI scripts.
+# .python-version is intentionally NOT copied: requires-python is >=3.14.0,
+# and `only-system` uses the image's 3.14.x without forcing an exact 3.14.0.
+COPY pyproject.toml uv.lock README.md .env.example ./
+COPY src/ ./src/
+COPY tests/ ./tests/
+COPY smoke/ ./smoke/
+COPY scripts/ ./scripts/
+
+# Install everything: project + deps + dev group, reproducibly from the lock.
+RUN uv sync --frozen
+
+CMD ["bash"]

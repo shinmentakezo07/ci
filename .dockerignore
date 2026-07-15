@@ -1,0 +1,43 @@
+# --- Secrets: NEVER ship these into an image ---
+.env
+.env..example
+# (`.env.example` IS needed at build time for the hatch force-include, so rescue it)
+!.env.example
+
+# --- Git / CI ---
+.git/
+.gitignore
+.github/
+
+# --- Python caches & virtualenvs ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# --- Local tooling / agent scratch ---
+.claude/
+.cursor/
+.serena/
+.kimchi/
+.worktrees/
+agent_workspace/
+.vscode/
+cmd.md
+
+# --- Logs & runtime artifacts ---
+logs/
+server.log
+server.*.log
+debug-*.log
+llama_cache/
+.smoke-results/
+
+# --- OS noise ---
+.DS_Store

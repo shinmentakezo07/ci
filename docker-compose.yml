@@ -1,0 +1,63 @@
+# Free Claude Code — orchestration.
+#
+# `docker compose up -d` builds the server image and runs it on :8082.
+# Configuration lives in `environment:` below; provider keys/model routes are
+# passed through as env vars (pydantic reads them with the highest precedence).
+#
+# Optionally drop a real `.env` next to this file and uncomment `env_file:` to
+# load the same keys the host uses. (`.env` is gitignored and never baked into
+# the image.)
+#
+#   docker compose up -d --build
+#   docker compose logs -f
+#   docker compose down          # keep the config volume
+#   docker compose down -v       # also delete persisted config/state
+
+services:
+  fcc:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # uv/Python pins; bump to match pyproject's required-version if needed.
+        UV_VERSION: "0.11.0"
+        PYTHON_VERSION: "3.14"
+        # Leave empty for the server-only image, or e.g. "voice".
+        EXTRAS: ""
+    image: free-claude-code:4.6.0
+    container_name: fcc
+    # The proxy endpoint (/v1/messages) is reachable on this published port with
+    # the ANTHROPIC_AUTH_TOKEN bearer. NOTE: the /admin UI is loopback-only by
+    # design, so it returns 403 behind a port mapping. To open /admin from a
+    # host browser, switch to `network_mode: host` (and remove `ports:` below).
+    ports:
+      - "8082:8082"
+    environment:
+      # Headless container: never try to open a browser.
+      FCC_OPEN_BROWSER: "false"
+      HOST: "0.0.0.0"
+      PORT: "8082"
+      # Optional bearer token guarding public API endpoints (blank = no auth).
+      ANTHROPIC_AUTH_TOKEN: "freecc"
+      # Provider keys + model routes — set the ones you use:
+      # NVIDIA_NIM_API_KEY: ""
+      # MODEL: "nvidia_nim/nvidia/nemotron-3-super-120b-a12b"
+      # OPENROUTER_API_KEY: ""
+      # GEMINI_API_KEY: ""
+      # ...see .env.example for the full list.
+    # env_file:
+    #   - .env
+    volumes:
+      # Persists ~/.fcc: logs, managed .env (admin edits), agent_workspace.
+      # Use a named volume (image perms are copied) or chown a bind mount 1000:1000.
+      - fcc-config:/home/app/.fcc
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8082/health', timeout=3).status==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  fcc-config:
