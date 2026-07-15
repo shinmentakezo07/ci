@@ -26,10 +26,11 @@ services:
         EXTRAS: ""
     image: free-claude-code:4.6.0
     container_name: fcc
-    # The proxy endpoint (/v1/messages) is reachable on this published port with
-    # the ANTHROPIC_AUTH_TOKEN bearer. NOTE: the /admin UI is loopback-only by
-    # design, so it returns 403 behind a port mapping. To open /admin from a
-    # host browser, switch to `network_mode: host` (and remove `ports:` below).
+    # The proxy endpoint (/v1/messages) and the /admin UI are both reachable on
+    # this published port. /admin is loopback-only by default; to open it from a
+    # host/cloud browser set ADMIN_REMOTE_ALLOWED=true below AND a strong
+    # ANTHROPIC_AUTH_TOKEN — remote admin then requires HTTP Basic auth whose
+    # password is that token (browser prompts once). Use HTTPS in production.
     ports:
       - "8082:8082"
     environment:
@@ -37,8 +38,12 @@ services:
       FCC_OPEN_BROWSER: "false"
       HOST: "0.0.0.0"
       PORT: "8082"
-      # Optional bearer token guarding public API endpoints (blank = no auth).
+      # Bearer token guarding the proxy AND the password for remote admin.
+      # CHANGE THIS to a strong secret before exposing the service.
       ANTHROPIC_AUTH_TOKEN: "freecc"
+      # Allow the /admin UI from non-loopback clients (cloud deploys).
+      # Remote admin requires HTTP Basic auth (password = ANTHROPIC_AUTH_TOKEN).
+      ADMIN_REMOTE_ALLOWED: "true"
       # Provider keys + model routes — set the ones you use:
       # NVIDIA_NIM_API_KEY: ""
       # MODEL: "nvidia_nim/nvidia/nemotron-3-super-120b-a12b"

@@ -293,6 +293,13 @@ class Settings(BaseSettings):
     anthropic_auth_token: str = Field(
         default="", validation_alias="ANTHROPIC_AUTH_TOKEN"
     )
+    # Allow the admin UI from non-loopback clients (cloud/container deploys).
+    # When true, remote admin access requires HTTP Basic auth whose password is
+    # the ANTHROPIC_AUTH_TOKEN (a strong token is mandatory). Default false keeps
+    # the admin UI loopback-only. Set via env `ADMIN_REMOTE_ALLOWED`.
+    admin_remote_allowed: bool = Field(
+        default=False, validation_alias="ADMIN_REMOTE_ALLOWED"
+    )
 
     # Handle empty strings for optional string fields
     @field_validator(

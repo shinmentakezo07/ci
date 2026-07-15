@@ -1,6 +1,8 @@
 """Local admin UI routes and APIs."""
 
+import binascii
 import ipaddress
+import secrets
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -13,6 +15,7 @@ from pydantic import BaseModel, Field
 from free_claude_code.config.admin.manifest import FIELD_BY_KEY
 from free_claude_code.config.admin.persistence import validate_updates
 from free_claude_code.config.admin.values import load_config_response
+from free_claude_code.config.settings import Settings
 
 from .dependencies import get_services
 from .ports import ApiServices
@@ -59,16 +62,80 @@ def _origin_is_local(origin: str | None) -> bool:
     return _is_loopback_host(parsed.hostname)
 
 
+def _decode_basic_auth(header: str) -> tuple[str, str] | None:
+    """Return (username, password) from an HTTP Basic Authorization header."""
+
+    parts = header.strip().split(maxsplit=1)
+    if len(parts) != 2 or parts[0].casefold() != "basic":
+        return None
+    try:
+        decoded = binascii.a2b_base64(parts[1].strip()).decode("utf-8")
+    except binascii.Error, ValueError, UnicodeDecodeError:
+        return None
+    if ":" not in decoded:
+        return None
+    username, password = decoded.split(":", 1)
+    return username, password
+
+
+def _remote_admin_basic_auth_ok(request: Request, token: str) -> bool:
+    """Verify HTTP Basic auth where the password equals the proxy token."""
+
+    if not token:
+        return False
+    credentials = _decode_basic_auth(request.headers.get("authorization", ""))
+    if credentials is None:
+        return False
+    return secrets.compare_digest(credentials[1].encode("utf-8"), token.encode("utf-8"))
+
+
+def _settings_for_admin(request: Request) -> Settings | None:
+    """Current settings snapshot for the admin auth decision.
+
+    Mirrors ``get_settings`` but is read from app state so the route handlers
+    can keep calling ``require_loopback_admin(request)`` imperatively. Returns
+    ``None`` when no snapshot is available (e.g. an in-process test fake) — the
+    guard treats that as "remote not allowed" and fails closed.
+    """
+
+    return request.app.state.services.requests.current_settings()
+
+
 def require_loopback_admin(request: Request) -> None:
-    """Allow admin access only from the local machine."""
+    """Allow admin access from the local machine, or remotely when opted in.
+
+    Local (loopback) clients are always allowed. Non-loopback clients are only
+    allowed when ``ADMIN_REMOTE_ALLOWED`` is enabled AND the request carries
+    HTTP Basic auth whose password equals the configured ``ANTHROPIC_AUTH_TOKEN``
+    — the same secret that protects the proxy. Remote access without that opt-in,
+    without a token, or with a wrong token is rejected with 403/401. If no
+    settings snapshot is available, remote access is rejected (fail closed).
+    """
 
     client_host = request.client.host if request.client else None
-    if not _is_loopback_host(client_host):
+    if _is_loopback_host(client_host) and _origin_is_local(
+        request.headers.get("origin")
+    ):
+        return
+
+    settings = _settings_for_admin(request)
+    if settings is None or not settings.admin_remote_allowed:
         raise HTTPException(status_code=403, detail="Admin UI is local-only")
 
-    origin = request.headers.get("origin")
-    if not _origin_is_local(origin):
-        raise HTTPException(status_code=403, detail="Admin UI is local-only")
+    token = settings.anthropic_auth_token.strip()
+    if not token:
+        # Refuse to expose the admin UI remotely without a guarding secret.
+        raise HTTPException(
+            status_code=403,
+            detail="Admin UI is local-only (set ANTHROPIC_AUTH_TOKEN for remote access)",
+        )
+
+    if not _remote_admin_basic_auth_ok(request, token):
+        raise HTTPException(
+            status_code=401,
+            detail="Admin authentication required",
+            headers={"WWW-Authenticate": 'Basic realm="fcc-admin"'},
+        )
 
 
 def _asset_response(filename: str) -> FileResponse:
