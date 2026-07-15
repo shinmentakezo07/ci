@@ -43,11 +43,15 @@ def explicit_env_path() -> Path | None:
 
 
 def configured_env_files() -> tuple[tuple[SourceType, Path], ...]:
-    """Return dotenv files in low-to-high precedence order."""
+    """Return dotenv files in low-to-high precedence order.
+
+    The label order must match :func:`settings_env_files`, which returns
+    ``(managed, repo, explicit)`` — managed env first, repo env second.
+    """
 
     source_names: tuple[SourceType, ...] = (
-        "repo_env",
         "managed_env",
+        "repo_env",
         "explicit_env_file",
     )
     return tuple(zip(source_names, settings_env_files(), strict=False))

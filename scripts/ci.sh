@@ -148,7 +148,9 @@ run_ruff_check() {
 
 run_ty() {
     step "ty check"
-    run uv run ty check
+    # Scope to the shipped trees so local-only scratch dirs (git worktrees,
+    # caches) carrying stale code don't produce false diagnostics.
+    run uv run ty check src tests smoke
 }
 
 run_pytest() {

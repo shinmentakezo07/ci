@@ -1,6 +1,7 @@
 """Tests for OpenAI-chat provider key retry on auth/rate-limit failures."""
 
 from typing import Any
+from unittest.mock import patch
 
 import httpx
 import openai
@@ -77,11 +78,13 @@ async def test_openai_chat_retries_on_auth_error_with_next_key():
             )
         return _FakeStream([_Chunk()])
 
-    provider._client.chat.completions.create = fake_create  # type: ignore
-
     body = {"model": "test-model", "messages": []}
-    stream, _ = await provider._create_stream(body)
-    chunks = [chunk async for chunk in stream]
+    # Patch the SDK's bound ``create`` via ``patch.object`` so the type checker
+    # sees an Any-typed replacement instead of an incompatible bare assignment.
+    with patch.object(provider._client.chat.completions, "create", fake_create):
+        stream, _ = await provider._create_stream(body)
+        chunks = [chunk async for chunk in stream]
+
     assert len(calls) == 2
     assert calls[0]["Authorization"] == "Bearer bad-key"
     assert calls[1]["Authorization"] == "Bearer good-key"

@@ -53,7 +53,7 @@ jobs:
           - id: ruff-check
             run: uv run ruff check
           - id: ty
-            run: uv run ty check
+            run: uv run ty check src tests smoke
           - id: pytest
             run: uv run pytest -v --tb=short
     steps:
